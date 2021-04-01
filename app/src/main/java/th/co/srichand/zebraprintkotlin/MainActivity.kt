@@ -200,17 +200,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun getPDF(){
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M){
-            if(checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED){
-                // show pop up
-                requestPermissions(
-                        arrayOf(android.Manifest.permission.READ_EXTERNAL_STORAGE),
-                        READ_PERMISSION_CODE
-                )
-            }
-            else{
-                getListPDF()
-            }
+        if(checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED){
+            // show pop up
+            requestPermissions(
+                    arrayOf(android.Manifest.permission.READ_EXTERNAL_STORAGE),
+                    READ_PERMISSION_CODE
+            )
         }
         else{
             getListPDF()
@@ -218,17 +213,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun  getImage(){
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M){
-            if(checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED){
-                // show pop up
-                requestPermissions(
-                        arrayOf(android.Manifest.permission.READ_EXTERNAL_STORAGE),
-                        READ_PERMISSION_CODE
-                )
-            }
-            else{
-                getListImages()
-            }
+        if(checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED){
+            // show pop up
+            requestPermissions(
+                    arrayOf(android.Manifest.permission.READ_EXTERNAL_STORAGE),
+                    READ_PERMISSION_CODE
+            )
         }
         else{
             getListImages()
