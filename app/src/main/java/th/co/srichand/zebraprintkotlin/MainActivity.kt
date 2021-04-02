@@ -1,24 +1,20 @@
 package th.co.srichand.zebraprintkotlin
 
+
 import android.app.PendingIntent
 import android.content.*
 import android.content.pm.PackageManager
 import android.database.Cursor
 import android.graphics.*
-import android.graphics.pdf.PdfRenderer
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbManager
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
+import android.os.Handler
 import android.os.Parcelable
-import android.provider.DocumentsContract
-import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.view.View
-import android.widget.Button
-import android.widget.TextView
-import android.widget.Toast
+import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import com.tom_roush.pdfbox.pdmodel.PDDocument
 import com.tom_roush.pdfbox.rendering.PDFRenderer
@@ -30,7 +26,6 @@ import com.zebra.sdk.printer.discovery.DiscoveredPrinterUsb
 import com.zebra.sdk.printer.discovery.DiscoveryHandler
 import com.zebra.sdk.printer.discovery.UsbDiscoverer
 import java.io.File
-import java.io.IOException
 import java.io.InputStream
 import java.util.*
 import kotlin.collections.ArrayList
@@ -42,20 +37,23 @@ class MainActivity : AppCompatActivity() {
     private var hasPermissionToCommunicate = false
     private var mUsbManager: UsbManager? = null
     private var buttonRequestPermission: Button? = null
-    private var buttonGetPDF : Button? = null
+    private var buttonGetPDF: Button? = null
     private var buttonPrint: Button? = null
-    private var buttonGetImage : Button? = null
+    private var buttonGetImage: Button? = null
     private var discoveredPrinterUsb: DiscoveredPrinterUsb? = null
     private var filePath: String? = null
-    private var fileWidth : Int? = null
-    private var fileInputStream : InputStream? =null
-    private var fileLength : Int? = null
-    private var pdfStatus : TextView? = null
-    private var zplcode : String? = null
+    private var fileInputStream: InputStream? = null
+    private var fileLength: Int? = null
+    private var pdfStatus: TextView? = null
+    private var zplcode: String? = null
     private val sentZPl: MutableList<String> = ArrayList()
-    private val PDF_PICK_CODE : Int = 1002
-    private val IMAGE_PICK_CODE : Int = 1000
+    private val PDF_PICK_CODE: Int = 1002
+    private val IMAGE_PICK_CODE: Int = 1000
     private val READ_PERMISSION_CODE: Int = 1001
+    val handler = Handler()
+    val loadingDialog = LoadingDialog(this@MainActivity)
+
+
 
     private val mUsbReceiver: BroadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -85,8 +83,8 @@ class MainActivity : AppCompatActivity() {
 
 
 
-
         buttonRequestPermission!!.setOnClickListener {
+
             Toast.makeText(applicationContext, "Checking", Toast.LENGTH_LONG).show()
             Thread {
                 val handler: UsbDiscoveryHandler = UsbDiscoveryHandler()
@@ -115,60 +113,18 @@ class MainActivity : AppCompatActivity() {
         }
 
 
-        buttonGetPDF!!.setOnClickListener{
+        buttonGetPDF!!.setOnClickListener {
             getPDF()
         }
 
-        buttonGetImage!!.setOnClickListener{
+        buttonGetImage!!.setOnClickListener {
             getImage()
         }
 
 
 
         buttonPrint!!.setOnClickListener {
-            if (hasPermissionToCommunicate) {
-                var connection: Connection? = null
-                Toast.makeText(applicationContext, "AT comm", Toast.LENGTH_LONG).show()
-                try {
-                    connection = discoveredPrinterUsb!!.connection
-                        connection.open()
-                        for (x in sentZPl.indices){
-                            connection.write(sentZPl!![x].toByteArray())
-                            Toast.makeText(applicationContext, "Pringt pages $x", Toast.LENGTH_LONG).show()
-                        }
-
-                } catch (e: ConnectionException) {
-                    Toast.makeText(
-                            applicationContext,
-                            e.message + e.localizedMessage,
-                            Toast.LENGTH_LONG
-                    ).show()
-                } catch (e: ZebraPrinterLanguageUnknownException) {
-                    Toast.makeText(applicationContext,
-                            e.message + e.localizedMessage,
-                            Toast.LENGTH_LONG
-                    ).show()
-                } finally {
-                    if (connection != null) {
-                        try {
-                            connection.close()
-                        } catch (e: ConnectionException) {
-                            e.printStackTrace()
-                            Toast.makeText(
-                                    applicationContext,
-                                    e.message + e.localizedMessage,
-                                    Toast.LENGTH_LONG
-                            ).show()
-                        }
-                    }
-                }
-            } else {
-                Toast.makeText(
-                        applicationContext,
-                        "No permission to communicate",
-                        Toast.LENGTH_LONG
-                ).show()
-            }
+            print()
         }
     }
 
@@ -198,35 +154,59 @@ class MainActivity : AppCompatActivity() {
         }
 
     }
+    private fun print(){
+        if (hasPermissionToCommunicate) {
+            var connection: Connection? = null
+            try {
+                connection = discoveredPrinterUsb!!.connection
+                connection.open()
+                for (x in sentZPl.indices) {
+                    connection.write(sentZPl!![x].toByteArray())
+                    Toast.makeText(applicationContext, "Pringt pages $x", Toast.LENGTH_LONG).show()
+                }
+            } catch (e: ConnectionException) {
+                Toast.makeText(applicationContext, e.message + e.localizedMessage, Toast.LENGTH_LONG).show()
+            } catch (e: ZebraPrinterLanguageUnknownException) {
+                Toast.makeText(applicationContext, e.message + e.localizedMessage, Toast.LENGTH_LONG).show()
+            } finally {
+                if (connection != null) {
+                    try {
+                        connection.close()
+                    } catch (e: ConnectionException) {
+                        e.printStackTrace()
+                        Toast.makeText(applicationContext, e.message + e.localizedMessage, Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        } else {
+            Toast.makeText(applicationContext, "No permission to communicate", Toast.LENGTH_LONG).show()
+        }
+    }
 
-    private fun getPDF(){
-        if(checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED){
-            // show pop up
+    private fun getPDF() {
+        if (checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
             requestPermissions(
                     arrayOf(android.Manifest.permission.READ_EXTERNAL_STORAGE),
                     READ_PERMISSION_CODE
             )
-        }
-        else{
+        } else {
             getListPDF()
         }
     }
 
-    private fun  getImage(){
-        if(checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED){
-            // show pop up
+    private fun getImage() {
+        if (checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
             requestPermissions(
                     arrayOf(android.Manifest.permission.READ_EXTERNAL_STORAGE),
                     READ_PERMISSION_CODE
             )
-        }
-        else{
+        } else {
             getListImages()
         }
     }
 
 
-    private fun getListImages(){
+    private fun getListImages() {
         val intent = Intent(Intent.ACTION_PICK)
         intent.type = "image/*"
         intent.action = Intent.ACTION_GET_CONTENT;
@@ -234,8 +214,7 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-
-    private fun getListPDF(){
+    private fun getListPDF() {
         val intent = Intent(Intent.ACTION_PICK)
         intent.type = "application/pdf"
         intent.action = Intent.ACTION_GET_CONTENT;
@@ -245,32 +224,42 @@ class MainActivity : AppCompatActivity() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if(resultCode == RESULT_OK && requestCode == PDF_PICK_CODE){
-            fileInputStream = data?.data?.let { contentResolver.openInputStream(it) }
-            pdfStatus = findViewById(R.id.outputPDF)
-            val fileUri = data!!.data
-            val fileName: String? = fileUri?.let { getPDFName(it) }
-            pdfStatus?.text = fileName
-             filePath = getPDFPath(fileUri!!)
-             fileWidth = getPageWidth(fileUri)
-            pdftoBitmapConverter(fileInputStream)
+        if (resultCode == RESULT_OK && requestCode == PDF_PICK_CODE) {
+
+            loadingDialog.startLoadingDialog()
+            val handler = Handler()
+            handler.postDelayed(
+                    fun() {
+                        run {
+                            fileInputStream = data?.data?.let { contentResolver.openInputStream(it) }
+                            pdfStatus = findViewById(R.id.outputPDF)
+                            val fileUri = data!!.data
+                            val fileName: String? = fileUri?.let { getPDFName(it) }
+                            pdfStatus?.text = fileName
+                            pdftoBitmapConverter(fileInputStream)
+
+                            if(sentZPl!=null){
+                                print()
+                            }
+
+                            loadingDialog.dismissDialog() }
+                    },5000)
 
         }
-        if(resultCode == RESULT_OK && requestCode == IMAGE_PICK_CODE){
+        if (resultCode == RESULT_OK && requestCode == IMAGE_PICK_CODE) {
             val stream = data?.data?.let { contentResolver.openInputStream(it) }
             val bitmap = BitmapFactory.decodeStream(stream)
-            val test =  getZplCode(bitmap, true)
+            val test = getZplCode(bitmap, true)
             zplcode = test
-            val printerView = findViewById<View>(R.id.printer) as TextView
-            printerView.text = test
         }
     }
+
 
     private fun pdftoBitmapConverter(fileInputStream: InputStream?) {
         val pd: PDDocument = PDDocument.load(fileInputStream)
         println("@pdfPAGE" + pd.numberOfPages)
         fileLength = pd.numberOfPages
-        for(x in 0 until fileLength!!){
+        for (x in 0 until fileLength!!) {
             val pr = PDFRenderer(pd)
             val bitmap = pr.renderImageWithDPI(x, 203F, Bitmap.Config.RGB_565)
             val image = getZplCode(bitmap, true)
@@ -301,8 +290,6 @@ class MainActivity : AppCompatActivity() {
         return grayScale
     }
 
-
-
     // Uses the Uri to obtain the name of the pdf.
     private fun getPDFName(fileUri: Uri): String? {
         val fileString = fileUri.toString()
@@ -324,74 +311,6 @@ class MainActivity : AppCompatActivity() {
         return fileName
     }
 
-
-    // Uses the Uri to obtain the path to the file.
-    private fun getPDFPath(fileUri: Uri): String? {
-        var fileUri = fileUri
-        val selection: String? = null
-        val selectionArgs: Array<String>? = null
-        val id = DocumentsContract.getDocumentId(fileUri)
-        try {
-            if (id.length < 15) {
-                fileUri = ContentUris.withAppendedId(
-                        Uri.parse("content://downloads/public_downloads"),
-                        java.lang.Long.valueOf(id)
-                )
-            } else if (id.substring(0, 7) == "primary") {
-                val endPath = id.substring(8)
-                return "/sdcard/$endPath"
-            } else if (id.substring(0, 1) != "/") {
-                var pathStarted = false
-                var path = "/sdcard/"
-                for (c in id.toCharArray()) {
-                    if (pathStarted) {
-                        path += c
-                    }
-                    if (c == ':') {
-                        pathStarted = true
-                    }
-                }
-                return path
-            } else {
-                return id
-            }
-        } catch (e: NumberFormatException) {
-           println("@getPDFPath $e")
-        }
-        if ("content".equals(fileUri.scheme, ignoreCase = true)) {
-            val projection = arrayOf(
-                    MediaStore.Files.FileColumns.DATA
-            )
-            var cursor: Cursor? = null
-            try {
-                cursor = contentResolver
-                    .query(fileUri, projection, selection, selectionArgs, null)
-                val column_index = cursor!!.getColumnIndexOrThrow(MediaStore.Images.Media.DATA)
-                if (cursor.moveToFirst()) {
-                    return cursor.getString(column_index)
-                }
-            } catch (e: java.lang.Exception) {
-            }
-        } else if ("file".equals(fileUri.scheme, ignoreCase = true)) {
-            return fileUri.path
-        }
-        return null
-    }
-
-
-    @Throws(IOException::class)
-    private fun getPageWidth(fileUri: Uri): Int? {
-        val pfdPdf = contentResolver.openFileDescriptor(
-                fileUri, "r"
-        )
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            val pdf = PdfRenderer(pfdPdf!!)
-            val page = pdf.openPage(0)
-            val pixWidth = page.width
-            return pixWidth / 72
-        }
-        return null
-    }
 
 
     companion object {

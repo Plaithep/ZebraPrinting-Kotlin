@@ -18,7 +18,7 @@ class ZPLconverter {
         //  String zplCode = "^GFA," + total + "," + total + "," + widthBytes + ", " + hexAscii;
         var zplCode = " $hexAscii"
         if (addHeaderFooter) {
-            val header = "^XA ^FO50,50^GFA,$total,$total,$widthBytes, "
+            val header = "^XA ^FO50,0^GFA,$total,$total,$widthBytes, "
             val footer = "^FS" + "^XZ"
             zplCode = header + zplCode + footer
         }
