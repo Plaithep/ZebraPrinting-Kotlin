@@ -1,5 +1,6 @@
 package th.co.srichand.zebraprintkotlin
 
+import android.app.AlertDialog
 import android.app.PendingIntent
 import android.content.*
 import android.content.pm.PackageManager
@@ -15,6 +16,8 @@ import android.os.Parcelable
 import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.provider.OpenableColumns
+import android.text.Layout
+import android.view.LayoutInflater
 import android.view.View
 import android.widget.Button
 import android.widget.TextView
@@ -87,31 +90,37 @@ class MainActivity : AppCompatActivity() {
 
 
         buttonRequestPermission!!.setOnClickListener {
-            Toast.makeText(applicationContext, "Checking", Toast.LENGTH_LONG).show()
-            Thread {
-                val handler: UsbDiscoveryHandler = UsbDiscoveryHandler()
-                UsbDiscoverer.findPrinters(applicationContext, handler)
-                try {
-                    while (!handler.discoveryComplete) {
-                        Thread.sleep(100)
-                    }
-                    if (handler.printers != null && handler.printers!!.size > 0) {
-                        discoveredPrinterUsb = handler.printers!![0]
-                        if (!mUsbManager!!.hasPermission(discoveredPrinterUsb!!.device)) {
-                            mUsbManager!!.requestPermission(
-                                    discoveredPrinterUsb!!.device,
-                                    mPermissionIntent
-                            )
-                        } else {
-                            hasPermissionToCommunicate = true
-                        }
-                    }
-                } catch (e: Exception) {
-                    Toast.makeText(
-                            applicationContext, e.message + e.localizedMessage, Toast.LENGTH_LONG
-                    ).show()
-                }
-            }.start()
+//            Toast.makeText(applicationContext, "Checking", Toast.LENGTH_LONG).show()
+//            Thread {
+//                val handler: UsbDiscoveryHandler = UsbDiscoveryHandler()
+//                UsbDiscoverer.findPrinters(applicationContext, handler)
+//                try {
+//                    while (!handler.discoveryComplete) {
+//                        Thread.sleep(100)
+//                    }
+//                    if (handler.printers != null && handler.printers!!.size > 0) {
+//                        discoveredPrinterUsb = handler.printers!![0]
+//                        if (!mUsbManager!!.hasPermission(discoveredPrinterUsb!!.device)) {
+//                            mUsbManager!!.requestPermission(
+//                                    discoveredPrinterUsb!!.device,
+//                                    mPermissionIntent
+//                            )
+//                        } else {
+//                            hasPermissionToCommunicate = true
+//                        }
+//                    }
+//                } catch (e: Exception) {
+//                    Toast.makeText(
+//                            applicationContext, e.message + e.localizedMessage, Toast.LENGTH_LONG
+//                    ).show()
+//                }
+//            }.start()
+
+            val mDialogView = LayoutInflater.from(this).inflate(R.layout.discovery_dialog, null)
+
+            val mBuilder = AlertDialog.Builder(this)
+                    .setView(mDialogView)
+                    .setTitle("Login Form")
         }
 
 
@@ -384,13 +393,10 @@ class MainActivity : AppCompatActivity() {
         val pfdPdf = contentResolver.openFileDescriptor(
                 fileUri, "r"
         )
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            val pdf = PdfRenderer(pfdPdf!!)
-            val page = pdf.openPage(0)
-            val pixWidth = page.width
-            return pixWidth / 72
-        }
-        return null
+        val pdf = PdfRenderer(pfdPdf!!)
+        val page = pdf.openPage(0)
+        val pixWidth = page.width
+        return pixWidth / 72
     }
 
 
