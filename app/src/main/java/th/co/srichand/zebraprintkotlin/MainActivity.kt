@@ -1,6 +1,8 @@
 package th.co.srichand.zebraprintkotlin
 
 
+import android.app.AlertDialog
+import android.app.Dialog
 import android.app.PendingIntent
 import android.content.*
 import android.content.pm.PackageManager
@@ -53,6 +55,8 @@ class MainActivity : AppCompatActivity() {
     val handler = Handler()
     val loadingDialog = LoadingDialog(this@MainActivity)
 
+    // private var disscoveredPrinters = arrayListOf<DiscoveredPrinterUsb>()
+    private var disscoveredPrinters : MutableList<DiscoveredPrinterUsb> = ArrayList()
 
 
     private val mUsbReceiver: BroadcastReceiver = object : BroadcastReceiver() {
@@ -69,6 +73,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -83,33 +88,48 @@ class MainActivity : AppCompatActivity() {
 
 
 
+        Thread {
+            val handler: UsbDiscoveryHandler = UsbDiscoveryHandler()
+            UsbDiscoverer.findPrinters(applicationContext, handler)
+            try {
+                while (!handler.discoveryComplete) {
+                    Thread.sleep(100)
+                }
+                if (handler.printers != null && handler.printers!!.size > 0) {
+
+                    discoveredPrinterUsb = handler.printers!![0]
+                    //disscoveredPrinters.add(handler.printers!![0])
+                    for (x in handler.printers!!.indices){
+                        disscoveredPrinters.add(handler.printers!![x])
+                    }
+
+
+                    if (!mUsbManager!!.hasPermission(discoveredPrinterUsb!!.device)) {
+                        mUsbManager!!.requestPermission(
+                                discoveredPrinterUsb!!.device,
+                                mPermissionIntent
+                        )
+                    } else {
+                        hasPermissionToCommunicate = true
+                    }
+                }
+            } catch (e: Exception) {
+                Toast.makeText(
+                        applicationContext, e.message + e.localizedMessage, Toast.LENGTH_LONG
+                ).show()
+            }
+        }.start()
+
+        Toast.makeText(applicationContext, "found " + discoveredPrinterUsb?.device?.productName, Toast.LENGTH_LONG).show()
+
+
+
+
+
         buttonRequestPermission!!.setOnClickListener {
 
-            Toast.makeText(applicationContext, "Checking", Toast.LENGTH_LONG).show()
-            Thread {
-                val handler: UsbDiscoveryHandler = UsbDiscoveryHandler()
-                UsbDiscoverer.findPrinters(applicationContext, handler)
-                try {
-                    while (!handler.discoveryComplete) {
-                        Thread.sleep(100)
-                    }
-                    if (handler.printers != null && handler.printers!!.size > 0) {
-                        discoveredPrinterUsb = handler.printers!![0]
-                        if (!mUsbManager!!.hasPermission(discoveredPrinterUsb!!.device)) {
-                            mUsbManager!!.requestPermission(
-                                    discoveredPrinterUsb!!.device,
-                                    mPermissionIntent
-                            )
-                        } else {
-                            hasPermissionToCommunicate = true
-                        }
-                    }
-                } catch (e: Exception) {
-                    Toast.makeText(
-                            applicationContext, e.message + e.localizedMessage, Toast.LENGTH_LONG
-                    ).show()
-                }
-            }.start()
+
+            Toast.makeText(applicationContext, "found " + discoveredPrinterUsb?.device?.productName, Toast.LENGTH_LONG).show()
         }
 
 
@@ -118,7 +138,16 @@ class MainActivity : AppCompatActivity() {
         }
 
         buttonGetImage!!.setOnClickListener {
-            getImage()
+          //  getImage()
+            if(disscoveredPrinters!= null){
+                for(x in disscoveredPrinters.indices){
+                    Toast.makeText(applicationContext, "found " + disscoveredPrinters[x].device.productName, Toast.LENGTH_LONG).show()
+                    Toast.makeText(applicationContext, "found " + disscoveredPrinters[x].device.deviceName, Toast.LENGTH_LONG).show()
+                }
+            }else{
+                Toast.makeText(applicationContext, "No printer founded", Toast.LENGTH_LONG).show()
+            }
+
         }
 
 
@@ -183,6 +212,8 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+
+
     private fun getPDF() {
         if (checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
             requestPermissions(
@@ -231,19 +262,21 @@ class MainActivity : AppCompatActivity() {
             handler.postDelayed(
                     fun() {
                         run {
-                            fileInputStream = data?.data?.let { contentResolver.openInputStream(it) }
-                            pdfStatus = findViewById(R.id.outputPDF)
-                            val fileUri = data!!.data
-                            val fileName: String? = fileUri?.let { getPDFName(it) }
-                            pdfStatus?.text = fileName
-                            pdftoBitmapConverter(fileInputStream)
+                                fileInputStream = data?.data?.let { contentResolver.openInputStream(it) }
+                                pdfStatus = findViewById(R.id.outputPDF)
+                                val fileUri = data!!.data
+                                val fileName: String? = fileUri?.let { getPDFName(it) }
+                                pdfStatus?.text = fileName
+                                pdftoBitmapConverter(fileInputStream)
 
-                            if(sentZPl!=null){
-                                print()
+                                if(sentZPl!=null){
+                                    print()
+                                }
+                                loadingDialog.dismissDialog()
+
                             }
 
-                            loadingDialog.dismissDialog() }
-                    },5000)
+                    },1000)
 
         }
         if (resultCode == RESULT_OK && requestCode == IMAGE_PICK_CODE) {
@@ -310,6 +343,18 @@ class MainActivity : AppCompatActivity() {
         }
         return fileName
     }
+
+//    override fun onCreateDialog(id: Int): Dialog {
+//        val builder = AlertDialog.Builder(this)
+//
+//        builder.setTitle("Select Printer")
+//        builder.setCancelable(true)
+//
+//        builder.setItems(disscoveredPrinters!!.toTypedArray(),DialogInterface.OnClickListener(){
+//            dialog: DialogInterface?, index: Int ->
+//            Toast.makeText(this,"you Choosen : " + disscoveredPrinters[index] ,Toast.LENGTH_LONG)
+//        })
+//    }
 
 
 
