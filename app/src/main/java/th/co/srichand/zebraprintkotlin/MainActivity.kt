@@ -10,16 +10,15 @@ import android.graphics.pdf.PdfRenderer
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbManager
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.os.Parcelable
 import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.provider.OpenableColumns
-import android.text.Layout
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.Button
+import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -31,11 +30,14 @@ import com.zebra.sdk.printer.ZebraPrinterLanguageUnknownException
 import com.zebra.sdk.printer.discovery.DiscoveredPrinter
 import com.zebra.sdk.printer.discovery.DiscoveredPrinterUsb
 import com.zebra.sdk.printer.discovery.DiscoveryHandler
-import com.zebra.sdk.printer.discovery.UsbDiscoverer
+import java.io.BufferedInputStream
 import java.io.File
 import java.io.IOException
 import java.io.InputStream
+import java.net.HttpURLConnection
+import java.net.URL
 import java.util.*
+import javax.net.ssl.HttpsURLConnection
 import kotlin.collections.ArrayList
 
 
@@ -86,6 +88,9 @@ class MainActivity : AppCompatActivity() {
         buttonGetPDF = findViewById<View>(R.id.pickPDF) as Button
         buttonGetImage = findViewById<View>(R.id.getImage) as Button
 
+       val pdfURL = "https://beauty-1948-data-staging.s3.ap-southeast-1.amazonaws.com/uploads/shipping_labels/pickling_list_shippop_labels/picking_list_labels_31_2020-12-22.pdf"
+
+
 
 
 
@@ -129,7 +134,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         buttonGetImage!!.setOnClickListener{
-            getImage()
+           // pdftoBitmapConverter()
+            RetrivePDFfromUrl()
         }
 
 
@@ -205,6 +211,19 @@ class MainActivity : AppCompatActivity() {
         override fun discoveryError(message: String) {
             discoveryComplete = true
         }
+    }
+
+    private fun RetrivePDFfromUrl(){
+        val url = URL("https://beauty-1948-data-staging.s3.ap-southeast-1.amazonaws.com/uploads/shipping_labels/pickling_list_shippop_labels/picking_list_labels_31_2020-12-22.pdf")
+        val urlConnection : HttpURLConnection = url.openConnection() as HttpsURLConnection
+        if (urlConnection.responseCode == 200) {
+            // response is success.
+            // we are getting input stream from url
+            // and storing it in our variable.
+            val inputStream =  BufferedInputStream(urlConnection.inputStream);
+
+            pdftoBitmapConverter(inputStream)
+        }
 
     }
 
@@ -262,7 +281,7 @@ class MainActivity : AppCompatActivity() {
             pdfStatus?.text = fileName
              filePath = getPDFPath(fileUri!!)
              fileWidth = getPageWidth(fileUri)
-            pdftoBitmapConverter(fileInputStream)
+          //  pdftoBitmapConverter(fileInputStream)
 
         }
         if(resultCode == RESULT_OK && requestCode == IMAGE_PICK_CODE){
@@ -275,16 +294,22 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun pdftoBitmapConverter(fileInputStream: InputStream?) {
-        val pd: PDDocument = PDDocument.load(fileInputStream)
-        println("@pdfPAGE" + pd.numberOfPages)
-        fileLength = pd.numberOfPages
-        for(x in 0 until fileLength!!){
-            val pr = PDFRenderer(pd)
-            val bitmap = pr.renderImageWithDPI(x, 203F, Bitmap.Config.RGB_565)
-            val image = getZplCode(bitmap, true)
-            sentZPl.add(image!!)
-        }
+    private fun pdftoBitmapConverter(inputStream: BufferedInputStream) {
+
+        val pd: PDDocument = PDDocument.load(inputStream)
+//        println("@pdfPAGE" + pd.numberOfPages)
+//        fileLength = pd.numberOfPages
+//        for(x in 0 until fileLength!!){
+//            val pr = PDFRenderer(pd)
+//            val bitmap = pr.renderImageWithDPI(x, 203F, Bitmap.Config.RGB_565)
+//            val image = getZplCode(bitmap, true)
+//            sentZPl.add(image!!)
+//        }
+        val pr = PDFRenderer(pd)
+        val bitmap = pr.renderImageWithDPI(0, 203F, Bitmap.Config.RGB_565)
+        val image = getZplCode(bitmap, true)
+        val zplcode = findViewById<EditText>(R.id.outputPDF)
+        zplcode.setText(image)
     }
 
 

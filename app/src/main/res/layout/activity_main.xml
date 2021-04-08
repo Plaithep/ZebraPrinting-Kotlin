@@ -11,7 +11,7 @@
         android:gravity="center" />
 
 
-    <TextView
+    <EditText
         android:id="@+id/outputPDF"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
